@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FraudShield Pro — Scan & Dashboard</title>
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Heroicons (inline used) and Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    /* Floating shapes animation */
+    @keyframes floatY {
+      0% { transform: translateY(0px) scale(1); opacity: 0.95; }
+      50% { transform: translateY(-18px) scale(1.02); opacity: 1; }
+      100% { transform: translateY(0px) scale(1); opacity: 0.95; }
+    }
+
+    .float-anim { animation: floatY 6s ease-in-out infinite; }
+
+    /* subtle glass effect */
+    .glass {
+      background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.15));
+      backdrop-filter: blur(8px);
+    }
+
+    /* pulsate for malicious result */
+    @keyframes pulse-danger {
+      0% { box-shadow: 0 0 0 0 rgba(239,68,68,0.45); }
+      70% { box-shadow: 0 0 0 12px rgba(239,68,68,0); }
+      100% { box-shadow: 0 0 0 0 rgba(239,68,68,0); }
+    }
+    .pulse-danger { animation: pulse-danger 1.6s infinite; }
+
+    /* small entrance animation for table rows */
+    .row-enter { transform: translateY(6px); opacity: 0; transition: all 400ms ease; }
+    .row-enter.show { transform: translateY(0); opacity: 1; }
+  </style>
+</head>
+<body class="antialiased bg-slate-50 text-slate-800">
+
+  <!-- NAVBAR -->
+  <header class="sticky top-0 z-50 bg-white/60 backdrop-blur-sm shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16">
+        <div class="flex items-center gap-4">
+          <a href="#" class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-r from-indigo-600 to-sky-400 flex items-center justify-center text-white font-bold shadow-md">FS</div>
+            <div>
+              <div class="text-lg font-semibold">FraudShield Pro</div>
+              <div class="text-xs text-slate-500 -mt-0.5">Phishing & Fraud Detection</div>
+            </div>
+          </a>
+        </div>
+
+        <nav class="flex items-center gap-4">
+          <a href="#scan" class="text-sm px-3 py-2 rounded-md hover:bg-slate-100">Scan</a>
+          <a href="#dashboard" class="text-sm px-3 py-2 rounded-md hover:bg-slate-100">Dashboard</a>
+          <a href="#profile" class="text-sm px-3 py-2 rounded-md hover:bg-slate-100">Profile</a>
+
+          <!-- Sign in / profile -->
+          <div class="relative" x-data>
+            <button id="signinBtn" class="ml-2 inline-flex items-center gap-2 px-3 py-2 bg-slate-800 text-white rounded-md hover:opacity-95">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M12 12a5 5 0 100-10 5 5 0 000 10zM3 21a9 9 0 0118 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="text-sm">Sign In</span>
+            </button>
+
+            <div id="profileMenu" class="hidden absolute right-0 mt-2 w-44 bg-white border rounded-lg shadow-lg py-2">
+              <button id="openProfile" class="w-full text-left px-4 py-2 hover:bg-slate-50">My Profile</button>
+              <button id="openSettings" class="w-full text-left px-4 py-2 hover:bg-slate-50">Settings</button>
+              <button id="logoutBtn" class="w-full text-left px-4 py-2 text-rose-600 hover:bg-slate-50">Logout</button>
+            </div>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6">
+    <section class="relative mt-8 overflow-hidden rounded-2xl">
+      <!-- Animated background gradient -->
+      <div class="absolute inset-0 -z-10 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-600 opacity-90" style="clip-path: polygon(0 0, 100% 0, 100% 70%, 0 100%);"></div>
+
+      <div class="relative py-14 px-6 lg:px-12">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div class="text-white">
+            <h1 class="text-4xl lg:text-5xl font-extrabold leading-tight">Stop phishing & fraud before they hit your users.</h1>
+            <p class="mt-4 text-lg max-w-xl opacity-90">Fast, accurate scanning for suspicious URLs and email addresses with a polished dashboard to track your history. Try a scan or connect your API for enterprise detection.</p>
+
+            <div class="mt-6 flex gap-3">
+              <a href="#scan" class="inline-flex items-center gap-2 px-5 py-3 bg-white text-slate-900 rounded-md font-medium shadow hover:scale-[1.01] transition">Start Scanning
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+              <button id="howItWorks" class="px-5 py-3 border border-white/30 rounded-md text-white hover:bg-white/10">How it works</button>
+            </div>
+          </div>
+
+          <!-- floating shapes + screenshot mock card -->
+          <div class="relative flex justify-center">
+            <div class="w-96 h-56 rounded-2xl glass p-4 shadow-xl relative overflow-hidden">
+              <div class="absolute -left-8 -top-8 w-44 h-44 rounded-full bg-white/8 float-anim"></div>
+              <div class="absolute -right-8 -bottom-8 w-56 h-56 rounded-full bg-white/6 float-anim" style="animation-delay:1s;"></div>
+              <div class="relative z-10 h-full flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                  <div class="text-white font-semibold">Live Preview</div>
+                  <div class="text-xs text-white/80">Status: <span class="ml-1 font-medium text-emerald-300">Online</span></div>
+                </div>
+
+                <div class="bg-white/90 rounded-xl p-3 text-slate-800">
+                  <div class="text-sm text-slate-600">Example scan</div>
+                  <div class="mt-2 flex items-center gap-3">
+                    <div class="flex-1 truncate text-sm">https://phishy-example.com/login</div>
+                    <div class="px-2 py-1 bg-rose-100 text-rose-700 rounded-md text-xs font-semibold">malicious</div>
+                  </div>
+                </div>
+
+                <div class="text-xs text-white/80">Analytics · 24h</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCAN CARD -->
+    <section id="scan" class="mt-10">
+      <div class="mx-auto max-w-4xl">
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 transition-transform hover:scale-[1.01]">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <h2 class="text-2xl font-bold">🔍 Scan URL or Email</h2>
+              <p class="mt-1 text-sm text-slate-500">Paste a URL or email address to check for phishing or fraud. Results are fast and explained.</p>
+            </div>
+            <div class="text-sm text-slate-500">Last scan: <span id="lastScanTime">—</span></div>
+          </div>
+
+          <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+            <input id="scanInput" type="text" placeholder="e.g. https://example.com or user@domain.com"
+                   class="md:col-span-2 px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-400 outline-none" />
+
+            <div class="flex gap-2">
+              <button id="scanBtn" class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg font-medium shadow hover:bg-indigo-500 transition">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none"><path d="M3 12h18M12 3v18" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                Scan Now
+              </button>
+
+              <button id="clearHistory" title="Clear history" class="px-3 py-3 rounded-lg border border-slate-200 hover:bg-slate-50" aria-label="Clear history">
+                <svg class="w-4 h-4 text-slate-600" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M8 6v12a2 2 0 002 2h4a2 2 0 002-2V6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- progress + result -->
+          <div class="mt-6 flex flex-col md:flex-row items-start md:items-center gap-4">
+            <div class="w-full md:w-2/3">
+              <div class="w-full bg-slate-100 rounded-full h-3 overflow-hidden">
+                <div id="scanProgress" class="h-3 rounded-full bg-indigo-500 w-0 transition-all"></div>
+              </div>
+              <div id="scanMessage" class="mt-3 text-sm text-slate-600">Enter a URL or email and press Scan.</div>
+            </div>
+
+            <div id="resultCard" class="w-full md:w-1/3 bg-slate-50 border border-slate-100 rounded-lg p-3 hidden">
+              <div id="resultBadge" class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold"></div>
+              <div class="mt-2 text-sm text-slate-700" id="resultExplain">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard & stats -->
+        <div id="dashboard" class="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white rounded-2xl shadow p-6">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-semibold">📄 Scan History</h3>
+              <div class="text-sm text-slate-500">Records stored locally</div>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+              <table class="w-full text-sm">
+                <thead class="text-slate-500 text-left">
+                  <tr>
+                    <th class="pb-3">Item</th>
+                    <th class="pb-3">Type</th>
+                    <th class="pb-3">Result</th>
+                    <th class="pb-3">When</th>
+                  </tr>
+                </thead>
+                <tbody id="historyBody" class="bg-white divide-y divide-slate-100 mt-2">
+                  <!-- rows inserted here -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl shadow p-6 flex flex-col gap-4">
+            <div>
+              <h4 class="text-sm font-medium text-slate-600">Summary (last 30 scans)</h4>
+              <div class="mt-3">
+                <canvas id="summaryChart" width="300" height="200" aria-label="summary-chart"></canvas>
+              </div>
+            </div>
+
+            <div class="mt-auto">
+              <div class="text-xs text-slate-500">Tip: Replace the demo scan function with your backend API for real detection. See code comments below.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- PROFILE -->
+        <section id="profile" class="mt-8">
+          <div class="bg-white rounded-2xl shadow p-6 flex flex-col md:flex-row gap-6">
+            <div class="w-full md:w-1/3">
+              <div class="p-4 rounded-lg border border-slate-100">
+                <div class="flex items-center gap-4">
+                  <div class="w-14 h-14 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-semibold">JD</div>
+                  <div>
+                    <div id="profileName" class="font-semibold">John Doe</div>
+                    <div id="profileEmail" class="text-xs text-slate-500">johndoe@example.com</div>
+                  </div>
+                </div>
+
+                <div class="mt-4 space-y-2">
+                  <button id="editProfile" class="w-full px-3 py-2 border rounded-md text-sm">Edit profile</button>
+                  <button id="resetDemo" class="w-full px-3 py-2 bg-rose-50 text-rose-600 rounded-md text-sm">Reset demo data</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="w-full md:w-2/3">
+              <div class="p-4 rounded-lg border border-slate-100">
+                <h5 class="font-semibold">Profile settings</h5>
+                <form id="profileForm" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input id="inpName" class="px-3 py-2 border rounded-md" placeholder="Full name" />
+                  <input id="inpEmail" class="px-3 py-2 border rounded-md" placeholder="Email" />
+                  <textarea id="inpBio" rows="3" class="col-span-2 px-3 py-2 border rounded-md" placeholder="Short bio (optional)"></textarea>
+                  <div class="col-span-2 flex gap-2 justify-end">
+                    <button type="button" id="saveProfile" class="px-4 py-2 bg-indigo-600 text-white rounded-md">Save</button>
+                    <button type="button" id="cancelEdit" class="px-4 py-2 border rounded-md">Cancel</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="mt-12 py-8 text-center text-sm text-slate-500">
+    © <span id="year"></span> FraudShield Pro • Built with ♥
+  </footer>
+
+  <!-- Modal (Sign-in) -->
+  <div id="signInModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+    <div class="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">
+      <h3 class="text-lg font-semibold">Sign in (demo)</h3>
+      <p class="text-sm text-slate-500 mt-1">This demo stores preferences locally only.</p>
+      <div class="mt-4 grid gap-3">
+        <input id="modalEmail" class="px-3 py-2 border rounded-md" type="email" placeholder="Email" />
+        <input id="modalPwd" class="px-3 py-2 border rounded-md" type="password" placeholder="Password" />
+        <div class="flex justify-end gap-2">
+          <button id="closeSignIn" class="px-3 py-2 border rounded-md">Cancel</button>
+          <button id="doSignIn" class="px-3 py-2 bg-indigo-600 text-white rounded-md">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT: logic & animations -->
+  <script>
+    // Utilities
+    const $ = id => document.getElementById(id);
+    const nowFmt = d => new Date(d).toLocaleString();
+
+    // Elements
+    const scanInput = $('scanInput');
+    const scanBtn = $('scanBtn');
+    const scanProgress = $('scanProgress');
+    const scanMessage = $('scanMessage');
+    const resultCard = $('resultCard');
+    const resultBadge = $('resultBadge');
+    const resultExplain = $('resultExplain');
+    const historyBody = $('historyBody');
+    const lastScanTime = $('lastScanTime');
+    const clearHistory = $('clearHistory');
+    const yearEl = $('year');
+
+    // Chart setup
+    const chartCtx = document.getElementById('summaryChart');
+    let summaryChart;
+    function initChart(data) {
+      const labels = ['Safe', 'Suspicious', 'Malicious'];
+      const counts = [
+        data.filter(s => s.status === 'Safe').length,
+        data.filter(s => s.status === 'Suspicious').length,
+        data.filter(s => s.status === 'Malicious').length
+      ];
+
+      if (summaryChart) summaryChart.destroy();
+      summaryChart = new Chart(chartCtx, {
+        type: 'doughnut',
+        data: {
+          labels,
+          datasets: [{ data: counts, hoverOffset: 12 }]
+        },
+        options: {
+          plugins: {
+            legend: { position: 'bottom' }
+          }
+        }
+      });
+    }
+    
+  async function runScan() {
+    const input = document.getElementById("scanInput").value.trim();
+    const resultEl = document.getElementById("scanResult");
+
+    if (!input) {
+      resultEl.innerText = "⚠️ Please enter a URL or Email.";
+      resultEl.className = "mt-4 text-xl font-semibold text-red-600";
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: input })
+      });
+
+      const data = await res.json();
+      resultEl.innerText = `Result: ${data.status}`;
+      resultEl.className = data.status.includes("Malicious")
+        ? "mt-4 text-xl font-bold text-red-600"
+        : "mt-4 text-xl font-bold text-green-600";
+
+    } catch (err) {
+      resultEl.innerText = "❌ Error connecting to scanner.";
+      resultEl.className = "mt-4 text-xl font-semibold text-red-600";
+    }
+  }
+
+
+    // Local storage: history & profile
+    const STORAGE_KEY = 'fraudshield_history_v1';
+    const PROFILE_KEY = 'fraudshield_profile_v1';
+
+    function loadHistory() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch { return []; }
+    }
+    function saveHistory(h) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(h));
+    }
+
+    function renderHistory() {
+      const data = loadHistory();
+      historyBody.innerHTML = '';
+      data.slice().reverse().forEach((row, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'row-enter';
+        tr.innerHTML = `
+          <td class="py-3 pr-6">${escapeHTML(row.item)}</td>
+          <td class="py-3 pr-6 text-slate-500">${row.type}</td>
+          <td class="py-3 pr-6">${badgeFor(row.status)}</td>
+          <td class="py-3 pr-6 text-xs text-slate-400">${new Date(row.time).toLocaleString()}</td>
+        `;
+        historyBody.appendChild(tr);
+        // small entrance stagger
+        setTimeout(() => tr.classList.add('show'), 40 * idx);
+      });
+      initChart(data);
+      lastScanTime.textContent = data.length ? new Date(data[data.length - 1].time).toLocaleString() : '—';
+    }
+
+    function badgeFor(status) {
+      if (status === 'Safe') return `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-50 text-emerald-700">✅ Safe</span>`;
+      if (status === 'Suspicious') return `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-amber-50 text-amber-700">⚠️ Suspicious</span>`;
+      return `<span class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-rose-50 text-rose-700">🚨 Malicious</span>`;
+    }
+
+    function escapeHTML(str) {
+      return String(str).replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+    }
+
+    // Demo scan logic — Replace this block with real API call
+    // Example:
+    // fetch('/api/scan', {method:'POST', body: JSON.stringify({item})})
+    //  .then(res => res.json()).then(showScanResult);
+    async function demoScan(item) {
+      // quick validation
+      const isEmail = item.includes('@') && /\S+@\S+\.\S+/.test(item);
+      const isURL = /^(https?:\/\/)?([^\s.]+\.)+[^\s]{2,}/i.test(item);
+
+      // Simulate progressive scan
+      scanProgress.style.width = '6%';
+      scanMessage.textContent = 'Initializing scan…';
+      resultCard.classList.add('hidden');
+
+      await sleep(360);
+      scanProgress.style.width = '28%';
+      scanMessage.textContent = 'Checking domain reputation…';
+      await sleep(600);
+      scanProgress.style.width = '62%';
+      scanMessage.textContent = 'Analyzing content & heuristics…';
+      await sleep(700);
+      scanProgress.style.width = '88%';
+      scanMessage.textContent = 'Correlating threat signals…';
+      await sleep(520);
+      scanProgress.style.width = '100%';
+      scanMessage.textContent = 'Finalizing results…';
+      await sleep(320);
+
+      // mock verdict logic: deterministic-ish to avoid pure randomness
+      const hash = Array.from(item).reduce((s,c)=>s + c.charCodeAt(0), 0);
+      const r = hash % 100;
+      let status, explain;
+
+      if (!isEmail && !isURL) {
+        status = 'Suspicious';
+        explain = 'Input not recognised as a valid URL or email. Please check format.';
+      } else if (r < 60) {
+        status = 'Safe';
+        explain = 'No immediate threat indicators found. Keep monitoring and avoid clicking unknown links.';
+      } else if (r < 85) {
+        status = 'Suspicious';
+        explain = 'Some signals (domain age / mismatch / redirect patterns) look suspicious — treat with caution.';
+      } else {
+        status = 'Malicious';
+        explain = 'High-risk indicators detected (phishing pattern, blacklisted domain or credential harvesting traits).';
+      }
+
+      // Show result
+      showScanResult({ item, type: isEmail ? 'Email' : 'URL', status, explain, time: Date.now() });
+    }
+
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    function showScanResult(result) {
+      // show card
+      resultCard.classList.remove('hidden');
+      resultExplain.textContent = result.explain;
+
+      // badge
+      resultBadge.innerHTML = '';
+      if (result.status === 'Safe') {
+        resultBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-emerald-50 text-emerald-700';
+        resultBadge.textContent = '✅ Safe';
+        resultCard.classList.remove('pulse-danger');
+      } else if (result.status === 'Suspicious') {
+        resultBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-amber-50 text-amber-700';
+        resultBadge.textContent = '⚠️ Suspicious';
+        resultCard.classList.remove('pulse-danger');
+      } else {
+        resultBadge.className = 'inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-semibold bg-rose-50 text-rose-700';
+        resultBadge.textContent = '🚨 Malicious';
+        resultCard.classList.add('pulse-danger');
+      }
+
+      // store history
+      const h = loadHistory();
+      h.push({ item: result.item, type: result.type, status: result.status, explain: result.explain, time: result.time || Date.now() });
+      // keep last 200 records
+      if (h.length > 200) h.splice(0, h.length - 200);
+      saveHistory(h);
+      renderHistory();
+
+      // reset progress after small pause
+      setTimeout(() => { scanProgress.style.width = '0%'; scanMessage.textContent = 'Enter a URL or email and press Scan.'; }, 800);
+    }
+
+    // Buttons & events
+    scanBtn.addEventListener('click', () => {
+      const v = scanInput.value.trim();
+      if (!v) {
+        scanMessage.textContent = 'Please enter a URL or email to scan.';
+        scanProgress.style.width = '0%';
+        return;
+      }
+      demoScan(v);
+    });
+
+    // support Enter key
+    scanInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { scanBtn.click(); } });
+
+    clearHistory.addEventListener('click', () => {
+      if (!confirm('Clear all scan history (this cannot be undone)?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      renderHistory();
+    });
+
+    // Profile functionality (simple client-side demo)
+    const profileForm = $('profileForm'), inpName = $('inpName'), inpEmail = $('inpEmail'), inpBio = $('inpBio'),
+          profileName = $('profileName'), profileEmail = $('profileEmail'), saveProfile = $('saveProfile'),
+          editProfile = $('editProfile'), cancelEdit = $('cancelEdit'), resetDemo = $('resetDemo');
+
+    function loadProfile() {
+      try {
+        return JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}');
+      } catch { return {}; }
+    }
+    function saveProfileToStorage(p) { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+
+    function populateProfileUI() {
+      const p = loadProfile();
+      profileName.textContent = p.name || 'John Doe';
+      profileEmail.textContent = p.email || 'johndoe@example.com';
+      inpName.value = p.name || '';
+      inpEmail.value = p.email || '';
+      inpBio.value = p.bio || '';
+    }
+
+    saveProfile.addEventListener('click', () => {
+      const p = { name: inpName.value.trim(), email: inpEmail.value.trim(), bio: inpBio.value.trim() };
+      saveProfileToStorage(p);
+      populateProfileUI();
+      alert('Profile saved (demo).');
+    });
+
+    editProfile.addEventListener('click', () => {
+      document.querySelector('#profileForm input')?.focus();
+      window.scrollTo({ top: $('profile').offsetTop - 60, behavior: 'smooth' });
+    });
+
+    cancelEdit.addEventListener('click', () => populateProfileUI());
+
+    resetDemo.addEventListener('click', () => {
+      if (!confirm('Reset demo data (history & profile)?')) return;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PROFILE_KEY);
+      populateProfileUI();
+      renderHistory();
+    });
+
+    // Sign in modal & profile menu (demo)
+    const signInModal = $('signInModal'), signinBtn = $('signinBtn'), doSignIn = $('doSignIn'), closeSignIn = $('closeSignIn');
+
+    signinBtn.addEventListener('click', () => {
+      signInModal.classList.remove('hidden');
+      signInModal.classList.add('flex');
+    });
+    closeSignIn.addEventListener('click', () => { signInModal.classList.add('hidden'); signInModal.classList.remove('flex'); });
+    doSignIn.addEventListener('click', () => {
+      // demo: just close modal and set profile email
+      const em = $('modalEmail').value.trim();
+      if (em) {
+        saveProfileToStorage({ name: em.split('@')[0], email: em });
+        populateProfileUI();
+      }
+      signInModal.classList.add('hidden'); signInModal.classList.remove('flex');
+    });
+
+    // profile menu toggle (small)
+    const profileMenu = $('profileMenu'), logoutBtn = $('logoutBtn'), openProfile = $('openProfile'), openSettings = $('openSettings');
+    signinBtn.addEventListener('contextmenu', (e) => e.preventDefault()); // no right click
+    signinBtn.addEventListener('dblclick', () => {
+      profileMenu.classList.toggle('hidden');
+      profileMenu.classList.toggle('block');
+    });
+
+    openProfile.addEventListener('click', () => { window.location.hash = '#profile'; profileMenu.classList.add('hidden'); });
+    openSettings.addEventListener('click', () => { alert('Settings (demo)'); profileMenu.classList.add('hidden'); });
+    logoutBtn.addEventListener('click', () => { localStorage.removeItem(PROFILE_KEY); populateProfileUI(); profileMenu.classList.add('hidden'); });
+
+    // page init
+    (function init(){
+      yearEl.textContent = new Date().getFullYear();
+      renderHistory();
+      populateProfileUI();
+    })();
+
+    // small helpers
+    window.addEventListener('load', () => {
+      // remove any lingering progress
+      setTimeout(()=>scanProgress.style.width='0%', 600);
+    });
+
+    // Make clickable "How it works"
+    $('howItWorks').addEventListener('click', () => {
+      alert('Demo: This page uses local demo detection. Replace the demoScan() function with an API POST to your analysis backend that returns {status, explain} for production usage.');
+    });
+
+    // Accessibility: focus outlines for keyboard nav
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Tab') document.body.classList.add('user-tab');
+    });
+  </script>
+</body>
+</html>
